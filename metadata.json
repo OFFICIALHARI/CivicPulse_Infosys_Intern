@@ -1,0 +1,10 @@
+
+{
+  "name": "CivicPulse - Smart City Grievance System",
+  "description": "A high-performance, role-based smart city grievance management system with automated categorization, real-time tracking, and administrative controls.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation",
+    "microphone"
+  ]
+}
