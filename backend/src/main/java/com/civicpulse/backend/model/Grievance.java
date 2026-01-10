@@ -80,8 +80,18 @@ public class Grievance {
     @Builder.Default
     private List<TimelineEntry> timeline = new ArrayList<>();
     
+    @OneToMany(mappedBy = "grievance", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<Feedback> feedbacks = new ArrayList<>();
+    
     public void addTimelineEntry(TimelineEntry entry) {
         timeline.add(entry);
         entry.setGrievance(this);
+    }
+    
+    public void addFeedback(Feedback feedback) {
+        feedbacks.add(feedback);
+        feedback.setGrievance(this);
     }
 }

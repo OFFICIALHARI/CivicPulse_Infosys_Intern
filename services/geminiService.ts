@@ -48,3 +48,42 @@ export const generateSmartResolution = async (grievance: any) => {
     return "Issue resolved successfully as per department standards.";
   }
 };
+
+export const generateReportSummary = async (grievance: any) => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Generate a professional 3-sentence summary of this grievance resolution for a report:
+      
+      Title: ${grievance.title}
+      Description: ${grievance.description}
+      Category: ${grievance.category}
+      Priority: ${grievance.priority}
+      Resolution Note: ${grievance.resolutionNote}
+      Status: ${grievance.status}
+      
+      Format as concise bullet points suitable for an official report.`,
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Gemini Report Generation Error:", error);
+    return `${grievance.title} - ${grievance.resolutionNote}`;
+  }
+};
+
+export const autoCompleteDescription = async (partialDescription: string) => {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `You are helping a citizen complete their complaint description. Based on the partial description, suggest 2-3 ways to complete it naturally and clearly:
+      
+      Partial Description: "${partialDescription}"
+      
+      Provide suggestions as a numbered list of complete sentences.`,
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Gemini Auto-complete Error:", error);
+    return null;
+  }
+};

@@ -30,6 +30,10 @@ const OfficerDashboard: React.FC = () => {
   const assignedGrievances = grievances.filter(g => g.assignedOfficerId === user?.id);
   const pendingTasks = assignedGrievances.filter(g => g.status !== GrievanceStatus.RESOLVED);
   const resolvedTasks = assignedGrievances.filter(g => g.status === GrievanceStatus.RESOLVED);
+  const byCategory = resolvedTasks.reduce<Record<string, number>>((acc, g) => {
+    acc[g.category] = (acc[g.category] || 0) + 1;
+    return acc;
+  }, {});
 
   const handleSmartResolution = async (g: any) => {
     setIsGenerating(true);
@@ -70,6 +74,22 @@ const OfficerDashboard: React.FC = () => {
           >
             History ({resolvedTasks.length})
           </button>
+        </div>
+      </div>
+
+      {/* Simple Analytics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#161e31] p-6 rounded-2xl border border-slate-800">
+          <p className="text-slate-500 text-xs font-bold uppercase">Assigned</p>
+          <p className="text-3xl text-white font-bold">{assignedGrievances.length}</p>
+        </div>
+        <div className="bg-[#161e31] p-6 rounded-2xl border border-slate-800">
+          <p className="text-slate-500 text-xs font-bold uppercase">In Progress</p>
+          <p className="text-3xl text-white font-bold">{pendingTasks.filter(g => g.status === GrievanceStatus.IN_PROGRESS).length}</p>
+        </div>
+        <div className="bg-[#161e31] p-6 rounded-2xl border border-slate-800">
+          <p className="text-slate-500 text-xs font-bold uppercase">Resolved</p>
+          <p className="text-3xl text-white font-bold">{resolvedTasks.length}</p>
         </div>
       </div>
 

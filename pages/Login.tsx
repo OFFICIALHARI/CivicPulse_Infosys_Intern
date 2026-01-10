@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../store';
 import { UserRole } from '../types';
-import { ShieldAlert, ArrowRight, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
+import { ShieldAlert, ArrowRight, Mail, Lock, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { login, register } = useApp();
@@ -12,25 +12,35 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.CITIZEN);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    if (isLogin) {
-      const success = login(email, role);
-      if (!success) {
-        setError('Invalid credentials for selected role.');
+    try {
+      if (isLogin) {
+        const success = await login(email, role);
+        if (!success) {
+          setError('Invalid credentials for selected role.');
+        }
+      } else {
+        if (!name || !email || !password) {
+          setError('All fields are required.');
+          setIsLoading(false);
+          return;
+        }
+        const success = await register(name, email, role);
+        if (!success) {
+          setError('Email already registered for this role.');
+        }
       }
-    } else {
-      if (!name || !email || !password) {
-        setError('All fields are required.');
-        return;
-      }
-      const success = register(name, email, role);
-      if (!success) {
-        setError('Email already registered for this role.');
-      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -137,10 +147,20 @@ const Login: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-2xl shadow-xl shadow-indigo-900/50 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 group active:scale-95"
+              disabled={isLoading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-2xl shadow-xl shadow-indigo-900/50 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 group active:scale-95"
             >
-              {isLogin ? 'Sign In' : 'Create Account'}
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              {isLoading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {isLogin ? 'Sign In' : 'Create Account'}
+                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
 

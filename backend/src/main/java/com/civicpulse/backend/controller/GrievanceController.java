@@ -8,8 +8,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/grievances")
@@ -76,5 +82,82 @@ public class GrievanceController {
         return grievanceService.updateGrievance(id, request, actorName)
                 .map(grievance -> ResponseEntity.ok(ApiResponse.success("Grievance updated successfully", grievance)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+    
+        @PostMapping("/{id}/feedback")
+    public ResponseEntity<ApiResponse<FeedbackDTO>> submitFeedback(
+            @PathVariable String id,
+            @RequestBody FeedbackDTO feedbackDTO,
+            @RequestHeader("User-Id") Long userId) {
+        
+        String userName = userService.getUserById(userId)
+                .map(UserDTO::getName)
+                .orElse("User");
+        
+        FeedbackDTO feedback = grievanceService.submitFeedback(
+                id, 
+                feedbackDTO.getRating(), 
+                feedbackDTO.getComment(), 
+                userId, 
+                userName
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("Feedback submitted successfully", feedback));
+    }
+    
+    @GetMapping("/{id}/feedback")
+    public ResponseEntity<ApiResponse<List<FeedbackDTO>>> getGrievanceFeedback(@PathVariable String id) {
+        List<FeedbackDTO> feedbacks = grievanceService.getGrievanceFeedback(id);
+        return ResponseEntity.ok(ApiResponse.success(feedbacks));
+    }
+    
+    @GetMapping("/analytics/all")
+    public ResponseEntity<ApiResponse<AnalyticsDTO>> getAnalyticsForAll() {
+        AnalyticsDTO analytics = grievanceService.getAnalyticsForAll();
+        return ResponseEntity.ok(ApiResponse.success(analytics));
+    }
+    
+    @GetMapping("/analytics/officer/{officerId}")
+    public ResponseEntity<ApiResponse<AnalyticsDTO>> getOfficerAnalytics(@PathVariable Long officerId) {
+        AnalyticsDTO analytics = grievanceService.getAnalyticsForOfficer(officerId);
+        return ResponseEntity.ok(ApiResponse.success(analytics));
+    }
+    
+        @PostMapping("/{id}/upload")
+    public ResponseEntity<ApiResponse<String>> uploadFile(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            // Validate file
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("File is empty"));
+            }
+            
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Only image files are allowed"));
+            }
+            
+            if (file.getSize() > 5 * 1024 * 1024) { // 5MB limit
+                return ResponseEntity.badRequest().body(ApiResponse.error("File size exceeds 5MB limit"));
+            }
+            
+            // Create uploads directory if it doesn't exist
+            String uploadDir = "./uploads";
+            Files.createDirectories(Paths.get(uploadDir));
+            
+            // Save file with unique name
+            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Path filePath = Paths.get(uploadDir, fileName);
+            Files.write(filePath, file.getBytes());
+            
+            // Update grievance with file path
+            grievanceService.updateGrievanceImage(id, filePath.toString());
+            
+            return ResponseEntity.ok(ApiResponse.success("File uploaded successfully", filePath.toString()));
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("File upload failed: " + e.getMessage()));
+        }
     }
 }

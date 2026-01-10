@@ -30,4 +30,21 @@ public class User {
     
     @Column
     private String password;
+    
+    // Performance metrics for officers
+    @Column
+    @Builder.Default
+    private Double averageRating = 0.0;
+    
+    @Column
+    @Builder.Default
+    private Integer feedbackCount = 0;
+    
+    @Column
+    @Builder.Default
+    private Integer warningsCount = 0;
+    
+    @Column
+    @Builder.Default
+    private Integer appreciationsCount = 0;
 }

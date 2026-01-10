@@ -2,13 +2,15 @@ import React from 'react';
 import { useApp } from './store';
 import { UserRole } from './types';
 import Login from './pages/Login';
+import { LandingPage } from './pages/LandingPage';
 import Layout from './components/Layout';
 import CitizenDashboard from './pages/CitizenDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import OfficerDashboard from './pages/OfficerDashboard';
 import { Loader2 } from 'lucide-react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { user, isLoading } = useApp();
 
   if (isLoading) {
@@ -21,7 +23,13 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <Login />;
+    return (
+      <Routes>
+        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/landing" replace />} />
+      </Routes>
+    );
   }
 
   const renderDashboard = () => {
@@ -38,9 +46,19 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout>
-      {renderDashboard()}
-    </Layout>
+    <Routes>
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/" element={<Layout>{renderDashboard()}</Layout>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 };
 

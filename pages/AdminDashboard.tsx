@@ -16,7 +16,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const AdminDashboard: React.FC = () => {
-  const { grievances, updateGrievance, users } = useApp();
+  const { grievances, updateGrievance, users, giveWarning, giveAppreciation } = useApp();
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [selectedGrievanceId, setSelectedGrievanceId] = useState<string | null>(null);
 
@@ -44,6 +44,18 @@ const AdminDashboard: React.FC = () => {
   // Updated: Use the users from the store instead of static MOCK_USERS
   const officers = users.filter(u => u.role === UserRole.OFFICER);
 
+  const computeOfficerStats = (officerId: string) => {
+    const assigned = grievances.filter(g => g.assignedOfficerId === officerId);
+    const resolved = assigned.filter(g => g.status === GrievanceStatus.RESOLVED);
+    let totalRating = 0;
+    let count = 0;
+    resolved.forEach(g => {
+      (g.feedbacks || []).forEach(f => { totalRating += f.rating; count += 1; });
+    });
+    const avg = count ? +(totalRating / count).toFixed(2) : 0;
+    return { assigned: assigned.length, resolved: resolved.length, avgRating: avg, feedbackCount: count };
+  };
+
   const handleAssign = (id: string, officerId: string) => {
     updateGrievance(id, { 
       assignedOfficerId: officerId, 
@@ -67,6 +79,49 @@ const AdminDashboard: React.FC = () => {
           <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 rounded-xl text-sm font-bold text-white shadow-lg shadow-indigo-900/40 hover:bg-indigo-700 transition-all">
             Download Report <ArrowUpRight size={18} />
           </button>
+        </div>
+      </div>
+
+      {/* Officer Performance */}
+      <div className="bg-[#161e31] p-8 rounded-[2rem] border border-slate-800 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-white font-poppins">Officer Performance</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#0f172a]/50">
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Officer</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Dept</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Assigned</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Resolved</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Avg Rating</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Feedbacks</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {officers.map(o => {
+                const stats = computeOfficerStats(o.id);
+                return (
+                  <tr key={o.id} className="hover:bg-slate-800/30">
+                    <td className="px-6 py-3 text-slate-300 font-semibold">{o.name}</td>
+                    <td className="px-6 py-3 text-slate-400 text-sm">{o.department || '-'}</td>
+                    <td className="px-6 py-3 text-slate-200">{stats.assigned}</td>
+                    <td className="px-6 py-3 text-slate-200">{stats.resolved}</td>
+                    <td className="px-6 py-3 text-slate-200">{stats.avgRating}</td>
+                    <td className="px-6 py-3 text-slate-200">{stats.feedbackCount}</td>
+                    <td className="px-6 py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => giveWarning(o.id)} className="px-3 py-1 rounded-lg bg-amber-900/40 text-amber-300 text-xs font-bold hover:bg-amber-800/40">Warn</button>
+                        <button onClick={() => giveAppreciation(o.id)} className="px-3 py-1 rounded-lg bg-emerald-900/40 text-emerald-300 text-xs font-bold hover:bg-emerald-800/40">Appreciate</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 

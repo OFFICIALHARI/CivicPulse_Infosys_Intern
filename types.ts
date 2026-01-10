@@ -27,12 +27,49 @@ export interface TimelineEntry {
   actor: string;
 }
 
+export interface Feedback {
+  id?: number;
+  grievanceId: number;
+  rating: number;
+  comment?: string;
+  givenBy: string;
+  givenByName?: string;
+  givenAt?: string;
+}
+
+export interface PerformanceMetrics {
+  officerId: string;
+  officerName: string;
+  department?: string;
+  averageRating: number;
+  feedbackCount: number;
+  warningsCount: number;
+  appreciationsCount: number;
+  resolvedCount: number;
+  assignedCount: number;
+}
+
+export interface AnalyticsData {
+  totalGrievances: number;
+  resolvedCount: number;
+  pendingCount: number;
+  inProgressCount: number;
+  assignedCount: number;
+  byCategory: Record<string, number>;
+  byStatus: Record<string, number>;
+  averageResolutionDays: number;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   department?: string;
+  averageRating?: number;
+  feedbackCount?: number;
+  warningsCount?: number;
+  appreciationsCount?: number;
 }
 
 export interface Grievance {
@@ -57,6 +94,7 @@ export interface Grievance {
   resolutionImage?: string;
   resolvedAt?: string;
   timeline: TimelineEntry[];
+  feedbacks?: Feedback[];
 }
 
 export interface AuthState {

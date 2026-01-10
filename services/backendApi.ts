@@ -3,31 +3,59 @@
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    department?: string;
+  };
+  message: string;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   message?: string;
   data: T;
 }
 
-// Helper function to make API calls
+// Helper function to get JWT token
+const getToken = (): string | null => {
+  return localStorage.getItem('cp_token');
+};
+
+// Helper function to make API calls with authentication
 const apiCall = async <T>(
   endpoint: string,
   options: RequestInit = {}
-): Promise<ApiResponse<T>> => {
+): Promise<T | AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    const token = getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return await response.json();
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('API error:', data);
+      throw new Error(data?.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
   } catch (error) {
     console.error('API call failed:', error);
     throw error;
@@ -36,18 +64,37 @@ const apiCall = async <T>(
 
 // Authentication APIs
 export const authApi = {
-  login: async (email: string, role: string) => {
-    return apiCall('/auth/login', {
+  login: async (email: string, role: string): Promise<AuthResponse> => {
+    const response = await apiCall<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, role }),
     });
+    
+    if ('token' in response) {
+      localStorage.setItem('cp_token', response.token);
+      localStorage.setItem('cp_user', JSON.stringify(response.user));
+      return response;
+    }
+    throw new Error('Invalid response from server');
   },
 
-  register: async (name: string, email: string, role: string, department?: string) => {
-    return apiCall('/auth/register', {
+  register: async (name: string, email: string, role: string, department?: string): Promise<AuthResponse> => {
+    const response = await apiCall<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, role, department, password: 'password' }),
     });
+    
+    if ('token' in response) {
+      localStorage.setItem('cp_token', response.token);
+      localStorage.setItem('cp_user', JSON.stringify(response.user));
+      return response;
+    }
+    throw new Error('Invalid response from server');
+  },
+
+  logout: () => {
+    localStorage.removeItem('cp_token');
+    localStorage.removeItem('cp_user');
   },
 };
 
@@ -68,10 +115,9 @@ export const userApi = {
 
 // Grievance APIs
 export const grievanceApi = {
-  createGrievance: async (data: any, userId: string) => {
+  createGrievance: async (data: any) => {
     return apiCall('/grievances', {
       method: 'POST',
-      headers: { 'User-Id': userId },
       body: JSON.stringify(data),
     });
   },
@@ -96,12 +142,58 @@ export const grievanceApi = {
     return apiCall(`/grievances/status/${status}`, { method: 'GET' });
   },
 
-  updateGrievance: async (id: string, updates: any, userId: string) => {
+  updateGrievance: async (id: string, updates: any) => {
     return apiCall(`/grievances/${id}`, {
       method: 'PATCH',
-      headers: { 'User-Id': userId },
       body: JSON.stringify(updates),
     });
+  },
+
+  submitFeedback: async (grievanceId: string, feedback: any) => {
+    return apiCall(`/grievances/${grievanceId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify(feedback),
+    });
+  },
+
+  getGrievanceFeedback: async (grievanceId: string) => {
+    return apiCall(`/grievances/${grievanceId}/feedback`, { method: 'GET' });
+  },
+
+  getAnalyticsAll: async () => {
+    return apiCall('/grievances/analytics/all', { method: 'GET' });
+  },
+
+  getOfficerAnalytics: async (officerId: string) => {
+    return apiCall(`/grievances/analytics/officer/${officerId}`, { method: 'GET' });
+  },
+
+  uploadFile: async (grievanceId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getToken();
+
+    try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/grievances/${grievanceId}/upload`, {
+        method: 'POST',
+        body: formData,
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('File upload failed:', error);
+      throw error;
+    }
   },
 };
 
@@ -113,3 +205,4 @@ export const backendApi = {
 };
 
 export default backendApi;
+

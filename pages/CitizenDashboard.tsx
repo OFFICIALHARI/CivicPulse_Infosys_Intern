@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useApp } from '../store';
 import { GRIEVANCE_CATEGORIES, STATUS_COLORS } from '../constants';
 import { autoCategorizeGrievance } from '../services/geminiService';
+import { backendApi } from '../services/backendApi';
 import { 
   Plus, 
   Send, 
@@ -15,18 +16,31 @@ import {
   Sparkles,
   Loader2,
   ShieldAlert,
-  ArrowRight
+  ArrowRight,
+  Star,
+  X
 } from 'lucide-react';
 import { GrievanceStatus, Grievance } from '../types';
 
 const CitizenDashboard: React.FC = () => {
-  const { grievances, user, submitGrievance } = useApp();
+  const { grievances, user, submitGrievance, addFeedback } = useApp();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedGrievance, setSelectedGrievance] = useState<Grievance | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState(GRIEVANCE_CATEGORIES[0]);
   const [title, setTitle] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [encodedImage, setEncodedImage] = useState<string | null>(null);
+  const [locationLat, setLocationLat] = useState<number | string>('');
+  const [locationLng, setLocationLng] = useState<number | string>('');
+  const [locationAddress, setLocationAddress] = useState('');
+  
+  // Feedback form states
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   const myGrievances = grievances.filter(g => g.submittedBy === user?.id);
 
@@ -43,17 +57,83 @@ const CitizenDashboard: React.FC = () => {
     setIsAnalyzing(false);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type.startsWith('image/') && file.size <= 5 * 1024 * 1024) {
+        setUploadedFile(file);
+        const reader = new FileReader();
+        reader.onload = () => {
+          setEncodedImage(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        alert('Please select an image file smaller than 5MB');
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate location
+    const lat = locationLat ? parseFloat(String(locationLat)) : 0;
+    const lng = locationLng ? parseFloat(String(locationLng)) : 0;
+    
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      if (locationLat || locationLng) {
+        alert('Please enter valid coordinates. Latitude: -90 to 90, Longitude: -180 to 180');
+        return;
+      }
+    }
+
     submitGrievance({
       title,
       description,
       category,
-      location: { lat: 0, lng: 0, address: "Civic Center, Block 4, New City" }
+      location: { 
+        lat: lat || 0, 
+        lng: lng || 0, 
+        address: locationAddress || "Location not specified"
+      },
+      image: encodedImage || undefined
     });
+    
+    // Reset form
     setIsFormOpen(false);
     setTitle('');
     setDescription('');
+    setUploadedFile(null);
+    setLocationLat('');
+    setLocationLng('');
+    setLocationAddress('');
+    setEncodedImage(null);
+  };
+
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGrievance || feedbackRating < 1 || feedbackRating > 5) return;
+
+    setIsSubmittingFeedback(true);
+    try {
+      // Try backend submission first
+      await backendApi.grievances.submitFeedback(
+        selectedGrievance.id,
+        { rating: feedbackRating, comment: feedbackComment },
+        user?.id || ''
+      );
+    } catch (error) {
+      console.warn('Backend feedback submission failed, saving locally instead.');
+    } finally {
+      // Always store locally to reflect immediately in UI
+      addFeedback(selectedGrievance.id, feedbackRating, feedbackComment);
+      alert('Feedback submitted successfully!');
+      setFeedbackOpen(false);
+      setFeedbackRating(5);
+      setFeedbackComment('');
+      setSelectedGrievance(null);
+      setIsSubmittingFeedback(false);
+    }
   };
 
   return (
@@ -98,37 +178,40 @@ const CitizenDashboard: React.FC = () => {
               <ShieldAlert size={64} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-300">Your voice matters</p>
-              <p className="text-slate-500 max-w-sm mx-auto">Found a pothole or a broken streetlight? Report it now and track it in real-time.</p>
+              <h3 className="text-xl font-bold text-white mb-2">No issues reported yet</h3>
+              <p className="text-slate-500 mb-6">Help keep our city clean and functional by reporting grievances</p>
+              <button 
+                onClick={() => setIsFormOpen(true)}
+                className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-500 transition-all flex items-center gap-2 mx-auto"
+              >
+                <Plus size={20} /> Report First Issue
+              </button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {myGrievances.map(g => (
-              <div key={g.id} className="bg-[#161e31] p-6 rounded-[2.5rem] border border-slate-800 shadow-lg hover:shadow-indigo-900/20 hover:border-indigo-900/50 transition-all group flex flex-col md:flex-row gap-6">
-                <div className="w-full md:w-48 h-48 rounded-3xl overflow-hidden bg-slate-900 shrink-0">
-                  <img src={`https://picsum.photos/seed/${g.id}/400/400`} className="w-full h-full object-cover grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500" alt="" />
-                </div>
-                <div className="flex-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${STATUS_COLORS[g.status]}`}>
-                      {g.status}
-                    </span>
-                    <span className="text-xs text-slate-500 font-medium">{new Date(g.submittedAt).toLocaleDateString()}</span>
+          <div className="grid gap-4">
+            {myGrievances.map((grievance) => (
+              <div 
+                key={grievance.id}
+                onClick={() => setSelectedGrievance(grievance)}
+                className="bg-[#161e31] border border-slate-800 rounded-2xl p-6 cursor-pointer hover:border-indigo-500/50 hover:bg-[#1a2341] transition-all group"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-white mb-2">{grievance.title}</h3>
+                    <p className="text-slate-400 text-sm mb-3">{grievance.description.substring(0, 100)}...</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="bg-indigo-900/30 text-indigo-400 px-3 py-1 rounded-lg text-xs font-bold">
+                        {grievance.category}
+                      </span>
+                      <span className={`px-3 py-1 rounded-lg text-xs font-bold ${STATUS_COLORS[grievance.status]?.bg} ${STATUS_COLORS[grievance.status]?.text}`}>
+                        {grievance.status}
+                      </span>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors mb-2">{g.title}</h3>
-                  <p className="text-slate-400 text-sm line-clamp-2 mb-4 flex-1">{g.description}</p>
-                  
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-800">
-                    <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <MapPin size={14} className="text-indigo-500" /> {g.location.address}
-                    </span>
-                    <button 
-                      onClick={() => setSelectedGrievance(g)}
-                      className="text-indigo-400 font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all"
-                    >
-                      Track Progress <ArrowRight size={14} />
-                    </button>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">{new Date(grievance.submittedAt).toLocaleDateString()}</p>
+                    <div className="w-3 h-3 bg-indigo-500 rounded-full mt-2 mx-auto group-hover:animate-pulse"></div>
                   </div>
                 </div>
               </div>
@@ -137,19 +220,14 @@ const CitizenDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Details Modal */}
-      {selectedGrievance && (
+      {/* Grievance Details Modal */}
+      {selectedGrievance && !feedbackOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="bg-[#111827] border border-slate-800 rounded-[3rem] w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="bg-[#111827] border border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-[#161e31]">
-              <div className="flex items-center gap-4">
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${STATUS_COLORS[selectedGrievance.status]}`}>
-                  {selectedGrievance.status}
-                </span>
-                <h2 className="text-2xl font-bold text-white font-poppins">{selectedGrievance.id}</h2>
-              </div>
-              <button onClick={() => setSelectedGrievance(null)} className="p-3 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
-                <Plus className="w-6 h-6 rotate-45" />
+              <h2 className="text-2xl font-bold text-white font-poppins">{selectedGrievance.title}</h2>
+              <button onClick={() => setSelectedGrievance(null)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
+                <X className="w-6 h-6" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
@@ -199,9 +277,91 @@ const CitizenDashboard: React.FC = () => {
                   </h4>
                   <p className="text-slate-300 italic">"{selectedGrievance.resolutionNote}"</p>
                   <div className="text-xs text-slate-500">Closed on {new Date(selectedGrievance.resolvedAt!).toLocaleDateString()}</div>
+                  
+                  {selectedGrievance.status === GrievanceStatus.RESOLVED && !selectedGrievance.feedbacks?.length && (
+                    <button
+                      onClick={() => setFeedbackOpen(true)}
+                      className="mt-4 w-full bg-amber-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Star size={18} /> Rate This Resolution
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {selectedGrievance.feedbacks && selectedGrievance.feedbacks.length > 0 && (
+                <div className="bg-cyan-900/10 border border-cyan-900/30 p-8 rounded-[2rem] space-y-4">
+                  <h4 className="text-lg font-bold text-cyan-400">Your Feedback</h4>
+                  <div className="space-y-3">
+                    {selectedGrievance.feedbacks.map((fb, idx) => (
+                      <div key={idx} className="bg-[#161e31] p-4 rounded-xl border border-slate-800">
+                        <div className="flex items-center gap-2 mb-2">
+                          {[...Array(fb.rating)].map((_, i) => (
+                            <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
+                          ))}
+                        </div>
+                        <p className="text-slate-300 text-sm">{fb.comment}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {feedbackOpen && selectedGrievance && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-[#111827] border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl">
+            <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-[#161e31]">
+              <h2 className="text-2xl font-bold text-white font-poppins">Rate Your Experience</h2>
+              <button onClick={() => {setFeedbackOpen(false); setSelectedGrievance(null);}} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitFeedback} className="p-8 space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFeedbackRating(star)}
+                      className="transition-transform hover:scale-125"
+                    >
+                      <Star
+                        size={32}
+                        className={feedbackRating >= star ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Comments (Optional)</label>
+                <textarea
+                  rows={4}
+                  placeholder="Share your feedback about how the issue was resolved..."
+                  className="w-full px-6 py-4 bg-white text-slate-900 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/30 outline-none border-none font-medium"
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingFeedback}
+                className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSubmittingFeedback ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                Submit Feedback
+              </button>
+            </form>
           </div>
         </div>
       )}
@@ -213,7 +373,7 @@ const CitizenDashboard: React.FC = () => {
             <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-[#161e31]">
               <h2 className="text-2xl font-bold text-white font-poppins">Report Grievance</h2>
               <button onClick={() => setIsFormOpen(false)} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
-                <Plus className="w-6 h-6 rotate-45" />
+                <X className="w-6 h-6" />
               </button>
             </div>
             
@@ -268,20 +428,66 @@ const CitizenDashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Location Fields */}
+                <div className="bg-blue-900/10 border border-blue-900/30 p-6 rounded-2xl space-y-4">
+                  <h4 className="text-sm font-bold text-blue-400 uppercase">Location (Optional)</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2">Latitude</label>
+                      <input 
+                        type="number"
+                        step="0.0001"
+                        min="-90"
+                        max="90"
+                        placeholder="-90 to 90"
+                        className="w-full px-4 py-3 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-500/30 outline-none border-none font-medium text-sm"
+                        value={locationLat}
+                        onChange={(e) => setLocationLat(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2">Longitude</label>
+                      <input 
+                        type="number"
+                        step="0.0001"
+                        min="-180"
+                        max="180"
+                        placeholder="-180 to 180"
+                        className="w-full px-4 py-3 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-500/30 outline-none border-none font-medium text-sm"
+                        value={locationLng}
+                        onChange={(e) => setLocationLng(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Address (optional)"
+                    className="w-full px-4 py-3 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-500/30 outline-none border-none font-medium text-sm"
+                    value={locationAddress}
+                    onChange={(e) => setLocationAddress(e.target.value)}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="border-2 border-dashed border-slate-800 rounded-[2rem] p-8 text-center hover:bg-indigo-900/10 hover:border-indigo-500/50 transition-all cursor-pointer group">
+                  <label className="border-2 border-dashed border-slate-800 rounded-[2rem] p-8 text-center hover:bg-indigo-900/10 hover:border-indigo-500/50 transition-all cursor-pointer group">
                     <div className="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
                       <Camera className="text-slate-500 group-hover:text-indigo-400" size={28} />
                     </div>
                     <p className="text-sm font-black text-slate-300 uppercase">Attach Proof</p>
-                    <p className="text-xs text-slate-600">JPG, PNG up to 10MB</p>
-                  </div>
+                    <p className="text-xs text-slate-600">{uploadedFile ? uploadedFile.name : 'JPG, PNG up to 5MB'}</p>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
                   <div className="border-2 border-dashed border-slate-800 rounded-[2rem] p-8 text-center hover:bg-indigo-900/10 hover:border-indigo-500/50 transition-all cursor-pointer group">
                     <div className="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
                       <MapPin className="text-slate-500 group-hover:text-indigo-400" size={28} />
                     </div>
-                    <p className="text-sm font-black text-slate-300 uppercase">Tag Location</p>
-                    <p className="text-xs text-slate-600">Auto-pin current coords</p>
+                    <p className="text-sm font-black text-slate-300 uppercase">Location</p>
+                    <p className="text-xs text-slate-600">{locationLat && locationLng ? 'Location Set' : 'Enter above'}</p>
                   </div>
                 </div>
               </div>
