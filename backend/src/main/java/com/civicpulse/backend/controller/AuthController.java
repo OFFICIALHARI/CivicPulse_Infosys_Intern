@@ -18,35 +18,29 @@ public class AuthController {
     
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        return userService.login(request)
-                .map(user -> {
-                    String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().toString());
-                    AuthResponse response = AuthResponse.builder()
-                            .token(token)
-                            .user(user)
-                            .message("Login successful")
-                            .build();
-                    return ResponseEntity.ok(response);
-                })
-                .orElseGet(() -> ResponseEntity
-                        .badRequest()
-                        .body(ApiResponse.error("Invalid credentials for selected role")));
+        var userOpt = userService.login(request);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid credentials for selected role"));
+        }
+        return buildAuthResponse(userOpt.get(), "Login successful");
     }
     
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        return userService.register(request)
-                .map(user -> {
-                    String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().toString());
-                    AuthResponse response = AuthResponse.builder()
-                            .token(token)
-                            .user(user)
-                            .message("Registration successful")
-                            .build();
-                    return ResponseEntity.ok(response);
-                })
-                .orElseGet(() -> ResponseEntity
-                        .badRequest()
-                        .body(ApiResponse.error("Email already registered for this role")));
+        var userOpt = userService.register(request);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email already registered for this role"));
+        }
+        return buildAuthResponse(userOpt.get(), "Registration successful");
     }
+
+        private ResponseEntity<?> buildAuthResponse(UserDTO user, String message) {
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().toString());
+        AuthResponse response = AuthResponse.builder()
+            .token(token)
+            .user(user)
+            .message(message)
+            .build();
+        return ResponseEntity.ok(response);
+        }
 }
