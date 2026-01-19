@@ -70,7 +70,9 @@ public class JwtUtil {
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parserBuilder()
+        return Jwts
+
+                .parserBuilder()
             .setSigningKey(getSigningKey())
             .build()
             .parseClaimsJws(token)
