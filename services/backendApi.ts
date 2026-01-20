@@ -168,6 +168,34 @@ export const grievanceApi = {
     return apiCall(`/grievances/analytics/officer/${officerId}`, { method: 'GET' });
   },
 
+  getCompleteAnalytics: async () => {
+    return apiCall('/grievances/analytics/complete', { method: 'GET' });
+  },
+
+  getZoneAnalytics: async () => {
+    return apiCall('/grievances/analytics/zones', { method: 'GET' });
+  },
+
+  getSLAMetrics: async () => {
+    return apiCall('/grievances/analytics/sla', { method: 'GET' });
+  },
+
+  getOfficerSLAMetrics: async (officerId: string) => {
+    return apiCall(`/grievances/analytics/sla/officer/${officerId}`, { method: 'GET' });
+  },
+
+  getHeatMapData: async () => {
+    return apiCall('/grievances/analytics/heatmap', { method: 'GET' });
+  },
+
+  getGrievanceAnalysis: async () => {
+    return apiCall('/grievances/analytics/grievance-analysis', { method: 'GET' });
+  },
+
+  getGrievanceAnalysisForOfficer: async (officerId: string) => {
+    return apiCall(`/grievances/analytics/grievance-analysis/officer/${officerId}`, { method: 'GET' });
+  },
+
   uploadFile: async (grievanceId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

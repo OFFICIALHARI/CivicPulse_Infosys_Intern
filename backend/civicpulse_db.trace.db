@@ -1,0 +1,30 @@
+2026-01-20 12:25:18.123214+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-01-20 12:25:18.135580+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-01-20 12:25:18.140911+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-01-20 12:25:18.149377+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-01-20 12:26:32.361085+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-01-20 12:27:47.442720+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-01-20 12:32:37.926895+05:30 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GRIEVANCE" not found; SQL statement:
+SELECT STATUS, COUNT(*) as count FROM GRIEVANCE GROUP BY STATUS [42102-224]
+2026-01-20 12:32:43.310153+05:30 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GRIEVANCE" not found; SQL statement:
+SELECT STATUS, COUNT(*) as count FROM GRIEVANCE GROUP BY STATUS [42102-224]
+2026-01-20 12:32:54.567429+05:30 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "SELECT u.ID, u.NAME, u.EMAIL, COUNT(g.ID) as grievances_assigned \000d\000aFROM [*]USER u \000d\000aLEFT JOIN GRIEVANCE g ON u.ID = g.ASSIGNED_OFFICER_ID \000d\000aWHERE u.ROLE = 'OFFICER' \000d\000aGROUP BY u.ID, u.NAME, u.EMAIL"; expected "identifier"; SQL statement:
+SELECT u.ID, u.NAME, u.EMAIL, COUNT(g.ID) as grievances_assigned 
+FROM USER u 
+LEFT JOIN GRIEVANCE g ON u.ID = g.ASSIGNED_OFFICER_ID 
+WHERE u.ROLE = 'OFFICER' 
+GROUP BY u.ID, u.NAME, u.EMAIL [42001-224]
+2026-01-20 12:33:10.376625+05:30 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "GRIEVANCE" not found; SQL statement:
+SELECT * FROM GRIEVANCE ORDER BY CREATED_AT DESC LIMIT 1 [42102-224]
+2026-01-20 12:35:50.984671+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]

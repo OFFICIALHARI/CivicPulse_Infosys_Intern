@@ -55,6 +55,9 @@ public class Grievance {
     private String locationAddress;
     
     @Column
+    private String zone;  // Geographic zone/region
+    
+    @Column
     private String image;
     
     @Column
@@ -65,6 +68,13 @@ public class Grievance {
     
     @Column
     private LocalDateTime deadline;
+    
+    @Column
+    private Integer slaHours;  // SLA duration in hours based on priority
+    
+    @Enumerated(EnumType.STRING)
+    @Column
+    private SLAStatus slaStatus;  // ON_TIME, DELAYED, OVERDUE
     
     @Column(length = 2000)
     private String resolutionNote;

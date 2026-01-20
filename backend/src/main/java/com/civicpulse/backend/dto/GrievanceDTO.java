@@ -2,6 +2,7 @@ package com.civicpulse.backend.dto;
 
 import com.civicpulse.backend.model.GrievancePriority;
 import com.civicpulse.backend.model.GrievanceStatus;
+import com.civicpulse.backend.model.SLAStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,8 +28,12 @@ public class GrievanceDTO {
     private String assignedOfficerId;
     private LocalDateTime assignedAt;
     private LocalDateTime deadline;
+    private Integer slaHours;
+    private SLAStatus slaStatus;
+    private String zone;
     private String resolutionNote;
     private String resolutionImage;
     private LocalDateTime resolvedAt;
     private List<TimelineEntryDTO> timeline;
+    private List<FeedbackDTO> feedbacks;
 }

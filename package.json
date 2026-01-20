@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "@google/genai": "^1.35.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-is": "^19.2.3",
+    "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.30.3",
     "recharts": "^3.6.0"
   },
